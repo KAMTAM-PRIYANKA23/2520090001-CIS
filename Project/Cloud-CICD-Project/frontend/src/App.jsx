@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Trash2, CheckCircle2, Circle, ListTodo } from "lucide-react";
 import "./App.css";
 
@@ -10,12 +10,10 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Fetch tasks from backend
   const fetchTasks = async () => {
     try {
       const response = await fetch(API_URL);
       if (!response.ok) throw new Error("Could not fetch tasks");
-
       const data = await response.json();
       setTasks(data);
       setError("");
@@ -30,10 +28,8 @@ function App() {
     fetchTasks();
   }, []);
 
-  // Add a new task
   const addTask = async (e) => {
     e.preventDefault();
-
     if (!newTask.trim()) return;
 
     try {
@@ -45,34 +41,44 @@ function App() {
 
       if (!response.ok) throw new Error("Could not add task");
 
-      const addedTask = await response.json();
-      setTasks((previousTasks) => [...previousTasks, addedTask]);
       setNewTask("");
-      setError("");
+      await fetchTasks();
     } catch (err) {
       setError("Unable to add task. Please try again.");
     }
   };
 
-  // Mark a task as completed
-  const toggleTask = (id) => {
-    setTasks((previousTasks) =>
-      previousTasks.map((task) =>
-        task.id === id
-          ? { ...task, completed: !task.completed }
-          : task
-      )
-    );
+  const toggleTask = async (id, completed) => {
+    try {
+      const response = await fetch(`${API_URL}/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ completed: !completed }),
+      });
+
+      if (!response.ok) throw new Error("Could not update task");
+      await fetchTasks();
+    } catch (err) {
+      setError("Unable to update task. Please try again.");
+    }
   };
 
-  // Delete a task
-  const deleteTask = (id) => {
-    setTasks((previousTasks) =>
-      previousTasks.filter((task) => task.id !== id)
-    );
+  const deleteTask = async (id) => {
+    try {
+      const response = await fetch(`${API_URL}/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Could not delete task");
+      await fetchTasks();
+    } catch (err) {
+      setError("Unable to delete task. Please try again.");
+    }
   };
 
-  const completedCount = tasks.filter((task) => task.completed).length;
+  const completedCount = tasks.filter(
+    (task) => task.completed === true || task.completed === 1
+  ).length;
 
   return (
     <div className="app-container">
@@ -103,9 +109,7 @@ function App() {
             <span className="stat-label">Completed</span>
           </div>
           <div className="stat-box">
-            <span className="stat-number">
-              {tasks.length - completedCount}
-            </span>
+            <span className="stat-number">{tasks.length - completedCount}</span>
             <span className="stat-label">Remaining</span>
           </div>
         </section>
@@ -136,42 +140,45 @@ function App() {
             </p>
           ) : (
             <div className="task-list">
-              {tasks.map((task) => (
-                <div className="task-item" key={task.id}>
-                  <button
-                    className="complete-button"
-                    onClick={() => toggleTask(task.id)}
-                    type="button"
-                    aria-label="Toggle task completion"
-                  >
-                    {task.completed ? (
-                      <CheckCircle2 className="completed-icon" />
-                    ) : (
-                      <Circle />
-                    )}
-                  </button>
+              {tasks.map((task) => {
+                const isCompleted =
+                  task.completed === true || task.completed === 1;
 
-                  <span className={task.completed ? "task-title done" : "task-title"}>
-                    {task.title}
-                  </span>
+                return (
+                  <div className="task-item" key={task.id}>
+                    <button
+                      className="complete-button"
+                      onClick={() => toggleTask(task.id, isCompleted)}
+                      type="button"
+                      aria-label="Toggle task completion"
+                    >
+                      {isCompleted ? (
+                        <CheckCircle2 className="completed-icon" />
+                      ) : (
+                        <Circle />
+                      )}
+                    </button>
 
-                  <button
-                    className="delete-button"
-                    onClick={() => deleteTask(task.id)}
-                    type="button"
-                    aria-label="Delete task"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-              ))}
+                    <span className={isCompleted ? "task-title done" : "task-title"}>
+                      {task.title}
+                    </span>
+
+                    <button
+                      className="delete-button"
+                      onClick={() => deleteTask(task.id)}
+                      type="button"
+                      aria-label="Delete task"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </section>
 
-        <footer>
-          Built with React and Node.js
-        </footer>
+        <footer>Built with React and Node.js</footer>
       </main>
     </div>
   );
